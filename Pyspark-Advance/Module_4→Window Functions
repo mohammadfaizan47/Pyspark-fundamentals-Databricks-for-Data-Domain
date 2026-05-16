@@ -1,0 +1,2508 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {},
+     "inputWidgets": {},
+     "nuid": "4613a5ed-9c6c-463d-87f5-eb412d6a2225",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "source": [
+    "####Ex 1→ RANK,DENSE_RANK and ROW_NUMBER - know the difference\n",
+    "The three ranking functions behave differently when values are tied. This difference comes up in every DE interview — know which one to use for which situation."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 0,
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "collapsed": true,
+     "inputWidgets": {},
+     "nuid": "210307d7-a9a0-4f9d-815d-951e0177871b",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "outputs": [
+    {
+     "output_type": "display_data",
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>emp_id</th><th>emp_name</th><th>dept</th><th>region</th><th>month</th><th>sales</th><th>units_sold</th></tr></thead><tbody><tr><td>1</td><td>Alice</td><td>Electronics</td><td>North</td><td>2024-01</td><td>95000.0</td><td>120</td></tr><tr><td>2</td><td>Bob</td><td>Electronics</td><td>North</td><td>2024-01</td><td>72000.0</td><td>95</td></tr><tr><td>3</td><td>Charlie</td><td>Electronics</td><td>South</td><td>2024-01</td><td>88000.0</td><td>110</td></tr><tr><td>4</td><td>Diana</td><td>Clothing</td><td>North</td><td>2024-01</td><td>65000.0</td><td>200</td></tr><tr><td>5</td><td>Eve</td><td>Clothing</td><td>South</td><td>2024-01</td><td>78000.0</td><td>185</td></tr><tr><td>6</td><td>Frank</td><td>Clothing</td><td>East</td><td>2024-01</td><td>102000.0</td><td>240</td></tr><tr><td>7</td><td>Grace</td><td>Grocery</td><td>North</td><td>2024-01</td><td>45000.0</td><td>500</td></tr><tr><td>8</td><td>Henry</td><td>Grocery</td><td>South</td><td>2024-01</td><td>52000.0</td><td>580</td></tr><tr><td>9</td><td>Ivy</td><td>Grocery</td><td>East</td><td>2024-01</td><td>61000.0</td><td>620</td></tr><tr><td>10</td><td>Jack</td><td>Electronics</td><td>East</td><td>2024-01</td><td>115000.0</td><td>140</td></tr><tr><td>1</td><td>Alice</td><td>Electronics</td><td>North</td><td>2024-02</td><td>102000.0</td><td>130</td></tr><tr><td>2</td><td>Bob</td><td>Electronics</td><td>North</td><td>2024-02</td><td>68000.0</td><td>88</td></tr><tr><td>3</td><td>Charlie</td><td>Electronics</td><td>South</td><td>2024-02</td><td>91000.0</td><td>115</td></tr><tr><td>4</td><td>Diana</td><td>Clothing</td><td>North</td><td>2024-02</td><td>70000.0</td><td>210</td></tr><tr><td>5</td><td>Eve</td><td>Clothing</td><td>South</td><td>2024-02</td><td>83000.0</td><td>195</td></tr><tr><td>6</td><td>Frank</td><td>Clothing</td><td>East</td><td>2024-02</td><td>98000.0</td><td>230</td></tr><tr><td>7</td><td>Grace</td><td>Grocery</td><td>North</td><td>2024-02</td><td>48000.0</td><td>520</td></tr><tr><td>8</td><td>Henry</td><td>Grocery</td><td>South</td><td>2024-02</td><td>55000.0</td><td>595</td></tr><tr><td>9</td><td>Ivy</td><td>Grocery</td><td>East</td><td>2024-02</td><td>59000.0</td><td>610</td></tr><tr><td>10</td><td>Jack</td><td>Electronics</td><td>East</td><td>2024-02</td><td>121000.0</td><td>150</td></tr><tr><td>1</td><td>Alice</td><td>Electronics</td><td>North</td><td>2024-03</td><td>98000.0</td><td>125</td></tr><tr><td>2</td><td>Bob</td><td>Electronics</td><td>North</td><td>2024-03</td><td>75000.0</td><td>100</td></tr><tr><td>3</td><td>Charlie</td><td>Electronics</td><td>South</td><td>2024-03</td><td>85000.0</td><td>108</td></tr><tr><td>4</td><td>Diana</td><td>Clothing</td><td>North</td><td>2024-03</td><td>73000.0</td><td>215</td></tr><tr><td>5</td><td>Eve</td><td>Clothing</td><td>South</td><td>2024-03</td><td>80000.0</td><td>190</td></tr><tr><td>6</td><td>Frank</td><td>Clothing</td><td>East</td><td>2024-03</td><td>110000.0</td><td>255</td></tr><tr><td>7</td><td>Grace</td><td>Grocery</td><td>North</td><td>2024-03</td><td>51000.0</td><td>540</td></tr><tr><td>8</td><td>Henry</td><td>Grocery</td><td>South</td><td>2024-03</td><td>57000.0</td><td>600</td></tr><tr><td>9</td><td>Ivy</td><td>Grocery</td><td>East</td><td>2024-03</td><td>63000.0</td><td>630</td></tr><tr><td>10</td><td>Jack</td><td>Electronics</td><td>East</td><td>2024-03</td><td>118000.0</td><td>145</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {
+      "application/vnd.databricks.v1+output": {
+       "addedWidgets": {},
+       "aggData": [],
+       "aggError": "",
+       "aggOverflow": false,
+       "aggSchema": [],
+       "aggSeriesLimitReached": false,
+       "aggType": "",
+       "arguments": {},
+       "columnCustomDisplayInfos": {},
+       "data": [
+        [
+         1,
+         "Alice",
+         "Electronics",
+         "North",
+         "2024-01",
+         95000.0,
+         120
+        ],
+        [
+         2,
+         "Bob",
+         "Electronics",
+         "North",
+         "2024-01",
+         72000.0,
+         95
+        ],
+        [
+         3,
+         "Charlie",
+         "Electronics",
+         "South",
+         "2024-01",
+         88000.0,
+         110
+        ],
+        [
+         4,
+         "Diana",
+         "Clothing",
+         "North",
+         "2024-01",
+         65000.0,
+         200
+        ],
+        [
+         5,
+         "Eve",
+         "Clothing",
+         "South",
+         "2024-01",
+         78000.0,
+         185
+        ],
+        [
+         6,
+         "Frank",
+         "Clothing",
+         "East",
+         "2024-01",
+         102000.0,
+         240
+        ],
+        [
+         7,
+         "Grace",
+         "Grocery",
+         "North",
+         "2024-01",
+         45000.0,
+         500
+        ],
+        [
+         8,
+         "Henry",
+         "Grocery",
+         "South",
+         "2024-01",
+         52000.0,
+         580
+        ],
+        [
+         9,
+         "Ivy",
+         "Grocery",
+         "East",
+         "2024-01",
+         61000.0,
+         620
+        ],
+        [
+         10,
+         "Jack",
+         "Electronics",
+         "East",
+         "2024-01",
+         115000.0,
+         140
+        ],
+        [
+         1,
+         "Alice",
+         "Electronics",
+         "North",
+         "2024-02",
+         102000.0,
+         130
+        ],
+        [
+         2,
+         "Bob",
+         "Electronics",
+         "North",
+         "2024-02",
+         68000.0,
+         88
+        ],
+        [
+         3,
+         "Charlie",
+         "Electronics",
+         "South",
+         "2024-02",
+         91000.0,
+         115
+        ],
+        [
+         4,
+         "Diana",
+         "Clothing",
+         "North",
+         "2024-02",
+         70000.0,
+         210
+        ],
+        [
+         5,
+         "Eve",
+         "Clothing",
+         "South",
+         "2024-02",
+         83000.0,
+         195
+        ],
+        [
+         6,
+         "Frank",
+         "Clothing",
+         "East",
+         "2024-02",
+         98000.0,
+         230
+        ],
+        [
+         7,
+         "Grace",
+         "Grocery",
+         "North",
+         "2024-02",
+         48000.0,
+         520
+        ],
+        [
+         8,
+         "Henry",
+         "Grocery",
+         "South",
+         "2024-02",
+         55000.0,
+         595
+        ],
+        [
+         9,
+         "Ivy",
+         "Grocery",
+         "East",
+         "2024-02",
+         59000.0,
+         610
+        ],
+        [
+         10,
+         "Jack",
+         "Electronics",
+         "East",
+         "2024-02",
+         121000.0,
+         150
+        ],
+        [
+         1,
+         "Alice",
+         "Electronics",
+         "North",
+         "2024-03",
+         98000.0,
+         125
+        ],
+        [
+         2,
+         "Bob",
+         "Electronics",
+         "North",
+         "2024-03",
+         75000.0,
+         100
+        ],
+        [
+         3,
+         "Charlie",
+         "Electronics",
+         "South",
+         "2024-03",
+         85000.0,
+         108
+        ],
+        [
+         4,
+         "Diana",
+         "Clothing",
+         "North",
+         "2024-03",
+         73000.0,
+         215
+        ],
+        [
+         5,
+         "Eve",
+         "Clothing",
+         "South",
+         "2024-03",
+         80000.0,
+         190
+        ],
+        [
+         6,
+         "Frank",
+         "Clothing",
+         "East",
+         "2024-03",
+         110000.0,
+         255
+        ],
+        [
+         7,
+         "Grace",
+         "Grocery",
+         "North",
+         "2024-03",
+         51000.0,
+         540
+        ],
+        [
+         8,
+         "Henry",
+         "Grocery",
+         "South",
+         "2024-03",
+         57000.0,
+         600
+        ],
+        [
+         9,
+         "Ivy",
+         "Grocery",
+         "East",
+         "2024-03",
+         63000.0,
+         630
+        ],
+        [
+         10,
+         "Jack",
+         "Electronics",
+         "East",
+         "2024-03",
+         118000.0,
+         145
+        ]
+       ],
+       "datasetInfos": [],
+       "dbfsResultPath": null,
+       "isJsonSchema": true,
+       "metadata": {},
+       "overflow": false,
+       "plotOptions": {
+        "customPlotOptions": {},
+        "displayType": "table",
+        "pivotAggregation": null,
+        "pivotColumns": null,
+        "xColumns": null,
+        "yColumns": null
+       },
+       "removedWidgets": [],
+       "schema": [
+        {
+         "metadata": "{}",
+         "name": "emp_id",
+         "type": "\"integer\""
+        },
+        {
+         "metadata": "{}",
+         "name": "emp_name",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dept",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "region",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "month",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "sales",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "units_sold",
+         "type": "\"integer\""
+        }
+       ],
+       "type": "table"
+      }
+     },
+     "output_type": "display_data"
+    },
+    {
+     "output_type": "display_data",
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>emp_name</th><th>dept</th><th>sales</th><th>rank</th><th>dense_rank</th><th>row_number</th></tr></thead><tbody><tr><td>Frank</td><td>Clothing</td><td>102000.0</td><td>1</td><td>1</td><td>1</td></tr><tr><td>Eve</td><td>Clothing</td><td>78000.0</td><td>2</td><td>2</td><td>2</td></tr><tr><td>Diana</td><td>Clothing</td><td>65000.0</td><td>3</td><td>3</td><td>3</td></tr><tr><td>Jack</td><td>Electronics</td><td>115000.0</td><td>1</td><td>1</td><td>1</td></tr><tr><td>Alice</td><td>Electronics</td><td>95000.0</td><td>2</td><td>2</td><td>2</td></tr><tr><td>Charlie</td><td>Electronics</td><td>88000.0</td><td>3</td><td>3</td><td>3</td></tr><tr><td>Bob</td><td>Electronics</td><td>72000.0</td><td>4</td><td>4</td><td>4</td></tr><tr><td>Ivy</td><td>Grocery</td><td>61000.0</td><td>1</td><td>1</td><td>1</td></tr><tr><td>Henry</td><td>Grocery</td><td>52000.0</td><td>2</td><td>2</td><td>2</td></tr><tr><td>Grace</td><td>Grocery</td><td>45000.0</td><td>3</td><td>3</td><td>3</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {
+      "application/vnd.databricks.v1+output": {
+       "addedWidgets": {},
+       "aggData": [],
+       "aggError": "",
+       "aggOverflow": false,
+       "aggSchema": [],
+       "aggSeriesLimitReached": false,
+       "aggType": "",
+       "arguments": {},
+       "columnCustomDisplayInfos": {},
+       "data": [
+        [
+         "Frank",
+         "Clothing",
+         102000.0,
+         1,
+         1,
+         1
+        ],
+        [
+         "Eve",
+         "Clothing",
+         78000.0,
+         2,
+         2,
+         2
+        ],
+        [
+         "Diana",
+         "Clothing",
+         65000.0,
+         3,
+         3,
+         3
+        ],
+        [
+         "Jack",
+         "Electronics",
+         115000.0,
+         1,
+         1,
+         1
+        ],
+        [
+         "Alice",
+         "Electronics",
+         95000.0,
+         2,
+         2,
+         2
+        ],
+        [
+         "Charlie",
+         "Electronics",
+         88000.0,
+         3,
+         3,
+         3
+        ],
+        [
+         "Bob",
+         "Electronics",
+         72000.0,
+         4,
+         4,
+         4
+        ],
+        [
+         "Ivy",
+         "Grocery",
+         61000.0,
+         1,
+         1,
+         1
+        ],
+        [
+         "Henry",
+         "Grocery",
+         52000.0,
+         2,
+         2,
+         2
+        ],
+        [
+         "Grace",
+         "Grocery",
+         45000.0,
+         3,
+         3,
+         3
+        ]
+       ],
+       "datasetInfos": [],
+       "dbfsResultPath": null,
+       "isJsonSchema": true,
+       "metadata": {},
+       "overflow": false,
+       "plotOptions": {
+        "customPlotOptions": {},
+        "displayType": "table",
+        "pivotAggregation": null,
+        "pivotColumns": null,
+        "xColumns": null,
+        "yColumns": null
+       },
+       "removedWidgets": [],
+       "schema": [
+        {
+         "metadata": "{}",
+         "name": "emp_name",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dept",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "sales",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "rank",
+         "type": "\"integer\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dense_rank",
+         "type": "\"integer\""
+        },
+        {
+         "metadata": "{}",
+         "name": "row_number",
+         "type": "\"integer\""
+        }
+       ],
+       "type": "table"
+      }
+     },
+     "output_type": "display_data"
+    },
+    {
+     "output_type": "display_data",
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>emp_name</th><th>sales</th><th>rank</th><th>dense_rank</th><th>row_number</th></tr></thead><tbody><tr><td>Jack</td><td>115000.0</td><td>1</td><td>1</td><td>1</td></tr><tr><td>Alice</td><td>95000.0</td><td>2</td><td>2</td><td>2</td></tr><tr><td>Tiebreaker</td><td>95000.0</td><td>2</td><td>2</td><td>3</td></tr><tr><td>Charlie</td><td>88000.0</td><td>4</td><td>3</td><td>4</td></tr><tr><td>Bob</td><td>72000.0</td><td>5</td><td>4</td><td>5</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {
+      "application/vnd.databricks.v1+output": {
+       "addedWidgets": {},
+       "aggData": [],
+       "aggError": "",
+       "aggOverflow": false,
+       "aggSchema": [],
+       "aggSeriesLimitReached": false,
+       "aggType": "",
+       "arguments": {},
+       "columnCustomDisplayInfos": {},
+       "data": [
+        [
+         "Jack",
+         115000.0,
+         1,
+         1,
+         1
+        ],
+        [
+         "Alice",
+         95000.0,
+         2,
+         2,
+         2
+        ],
+        [
+         "Tiebreaker",
+         95000.0,
+         2,
+         2,
+         3
+        ],
+        [
+         "Charlie",
+         88000.0,
+         4,
+         3,
+         4
+        ],
+        [
+         "Bob",
+         72000.0,
+         5,
+         4,
+         5
+        ]
+       ],
+       "datasetInfos": [],
+       "dbfsResultPath": null,
+       "isJsonSchema": true,
+       "metadata": {},
+       "overflow": false,
+       "plotOptions": {
+        "customPlotOptions": {},
+        "displayType": "table",
+        "pivotAggregation": null,
+        "pivotColumns": null,
+        "xColumns": null,
+        "yColumns": null
+       },
+       "removedWidgets": [],
+       "schema": [
+        {
+         "metadata": "{}",
+         "name": "emp_name",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "sales",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "rank",
+         "type": "\"integer\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dense_rank",
+         "type": "\"integer\""
+        },
+        {
+         "metadata": "{}",
+         "name": "row_number",
+         "type": "\"integer\""
+        }
+       ],
+       "type": "table"
+      }
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "from pyspark.sql.functions import *\n",
+    "from pyspark.sql.types import *\n",
+    "from pyspark.sql.window import *\n",
+    "from pyspark.sql import *\n",
+    "from delta.tables import *\n",
+    "\n",
+    "schema = StructType([\n",
+    "    StructField(\"emp_id\", IntegerType(), True),\n",
+    "    StructField(\"emp_name\", StringType(), True),\n",
+    "    StructField(\"dept\", StringType(), True),\n",
+    "    StructField(\"region\", StringType(), True),\n",
+    "    StructField(\"month\", StringType(), True),\n",
+    "    StructField(\"sales\", DoubleType(), True),\n",
+    "    StructField(\"units_sold\", IntegerType(), True)\n",
+    "])\n",
+    "\n",
+    "data = [\n",
+    "    (1,  \"Alice\",   \"Electronics\", \"North\", \"2024-01\", 95000.0,  120),\n",
+    "    (2,  \"Bob\",     \"Electronics\", \"North\", \"2024-01\", 72000.0,   95),\n",
+    "    (3,  \"Charlie\", \"Electronics\", \"South\", \"2024-01\", 88000.0,  110),\n",
+    "    (4,  \"Diana\",   \"Clothing\",    \"North\", \"2024-01\", 65000.0,  200),\n",
+    "    (5,  \"Eve\",     \"Clothing\",    \"South\", \"2024-01\", 78000.0,  185),\n",
+    "    (6,  \"Frank\",   \"Clothing\",    \"East\",  \"2024-01\", 102000.0, 240),\n",
+    "    (7,  \"Grace\",   \"Grocery\",     \"North\", \"2024-01\", 45000.0,  500),\n",
+    "    (8,  \"Henry\",   \"Grocery\",     \"South\", \"2024-01\", 52000.0,  580),\n",
+    "    (9,  \"Ivy\",     \"Grocery\",     \"East\",  \"2024-01\", 61000.0,  620),\n",
+    "    (10, \"Jack\",    \"Electronics\", \"East\",  \"2024-01\", 115000.0, 140),\n",
+    "    (1,  \"Alice\",   \"Electronics\", \"North\", \"2024-02\", 102000.0, 130),\n",
+    "    (2,  \"Bob\",     \"Electronics\", \"North\", \"2024-02\", 68000.0,   88),\n",
+    "    (3,  \"Charlie\", \"Electronics\", \"South\", \"2024-02\", 91000.0,  115),\n",
+    "    (4,  \"Diana\",   \"Clothing\",    \"North\", \"2024-02\", 70000.0,  210),\n",
+    "    (5,  \"Eve\",     \"Clothing\",    \"South\", \"2024-02\", 83000.0,  195),\n",
+    "    (6,  \"Frank\",   \"Clothing\",    \"East\",  \"2024-02\", 98000.0,  230),\n",
+    "    (7,  \"Grace\",   \"Grocery\",     \"North\", \"2024-02\", 48000.0,  520),\n",
+    "    (8,  \"Henry\",   \"Grocery\",     \"South\", \"2024-02\", 55000.0,  595),\n",
+    "    (9,  \"Ivy\",     \"Grocery\",     \"East\",  \"2024-02\", 59000.0,  610),\n",
+    "    (10, \"Jack\",    \"Electronics\", \"East\",  \"2024-02\", 121000.0, 150),\n",
+    "    (1,  \"Alice\",   \"Electronics\", \"North\", \"2024-03\", 98000.0,  125),\n",
+    "    (2,  \"Bob\",     \"Electronics\", \"North\", \"2024-03\", 75000.0,  100),\n",
+    "    (3,  \"Charlie\", \"Electronics\", \"South\", \"2024-03\", 85000.0,  108),\n",
+    "    (4,  \"Diana\",   \"Clothing\",    \"North\", \"2024-03\", 73000.0,  215),\n",
+    "    (5,  \"Eve\",     \"Clothing\",    \"South\", \"2024-03\", 80000.0,  190),\n",
+    "    (6,  \"Frank\",   \"Clothing\",    \"East\",  \"2024-03\", 110000.0, 255),\n",
+    "    (7,  \"Grace\",   \"Grocery\",     \"North\", \"2024-03\", 51000.0,  540),\n",
+    "    (8,  \"Henry\",   \"Grocery\",     \"South\", \"2024-03\", 57000.0,  600),\n",
+    "    (9,  \"Ivy\",     \"Grocery\",     \"East\",  \"2024-03\", 63000.0,  630),\n",
+    "    (10, \"Jack\",    \"Electronics\", \"East\",  \"2024-03\", 118000.0, 145),\n",
+    "]\n",
+    "\n",
+    "df = spark.createDataFrame(data,schema)\n",
+    "df.createOrReplaceTempView(\"emp_sales\")\n",
+    "\n",
+    "df.display()\n",
+    "\n",
+    "# Window: rank within each dept by sales for Jan 2024\n",
+    "w = Window.partitionBy(\"dept\").orderBy(col(\"sales\").desc())\n",
+    "\n",
+    "df_jan = df.filter(col(\"month\").contains(\"2024-01\"))\n",
+    "\n",
+    "df_jan.select(\n",
+    "    \"emp_name\", \"dept\", \"sales\",\n",
+    "    rank().over(w).alias(\"rank\"),\n",
+    "    dense_rank().over(w).alias(\"dense_rank\"),\n",
+    "    row_number().over(w).alias(\"row_number\")\n",
+    ").orderBy(\"dept\",\"rank\").display()\n",
+    "\n",
+    "# to see a difference clearly - add a tie\n",
+    "tie_data = [(99, \"Tiebreaker\",\"Electronics\",\"North\",\"2024-01\",95000.0,100)]\n",
+    "df_tie = spark.createDataFrame(tie_data,schema)\n",
+    "df_with_tie = df_jan.union(df_tie)\n",
+    "\n",
+    "w2 = Window.partitionBy(\"dept\").orderBy(col(\"sales\").desc())\n",
+    "\n",
+    "df_with_tie.filter(col(\"dept\").contains(\"Electronics\")) \\\n",
+    "           .select(\"emp_name\", \"sales\",\n",
+    "            rank().over(w2).alias(\"rank\"),\n",
+    "            dense_rank().over(w2).alias(\"dense_rank\"),\n",
+    "            row_number().over(w2).alias(\"row_number\")       \n",
+    ").orderBy(\"rank\").display()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {},
+     "inputWidgets": {},
+     "nuid": "0f10205c-e066-4e6a-a951-f7d77bbd08d8",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "source": [
+    "####Ex 2→ Top-N per group - the most common DE interview pattern\n",
+    "Find the top N records per group — top 2 salespeople per department, latest order per customer, most recent record per key. This is asked in every single DE interview."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 0,
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "collapsed": true,
+     "inputWidgets": {},
+     "nuid": "9afb2a43-01e7-4ea4-835e-1cf180403cb2",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "outputs": [
+    {
+     "output_type": "display_data",
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>emp_id</th><th>emp_name</th><th>dept</th><th>region</th><th>month</th><th>sales</th><th>units_sold</th></tr></thead><tbody><tr><td>6</td><td>Frank</td><td>Clothing</td><td>East</td><td>2024-01</td><td>102000.0</td><td>240</td></tr><tr><td>5</td><td>Eve</td><td>Clothing</td><td>South</td><td>2024-01</td><td>78000.0</td><td>185</td></tr><tr><td>10</td><td>Jack</td><td>Electronics</td><td>East</td><td>2024-01</td><td>115000.0</td><td>140</td></tr><tr><td>1</td><td>Alice</td><td>Electronics</td><td>North</td><td>2024-01</td><td>95000.0</td><td>120</td></tr><tr><td>9</td><td>Ivy</td><td>Grocery</td><td>East</td><td>2024-01</td><td>61000.0</td><td>620</td></tr><tr><td>8</td><td>Henry</td><td>Grocery</td><td>South</td><td>2024-01</td><td>52000.0</td><td>580</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {
+      "application/vnd.databricks.v1+output": {
+       "addedWidgets": {},
+       "aggData": [],
+       "aggError": "",
+       "aggOverflow": false,
+       "aggSchema": [],
+       "aggSeriesLimitReached": false,
+       "aggType": "",
+       "arguments": {},
+       "columnCustomDisplayInfos": {},
+       "data": [
+        [
+         6,
+         "Frank",
+         "Clothing",
+         "East",
+         "2024-01",
+         102000.0,
+         240
+        ],
+        [
+         5,
+         "Eve",
+         "Clothing",
+         "South",
+         "2024-01",
+         78000.0,
+         185
+        ],
+        [
+         10,
+         "Jack",
+         "Electronics",
+         "East",
+         "2024-01",
+         115000.0,
+         140
+        ],
+        [
+         1,
+         "Alice",
+         "Electronics",
+         "North",
+         "2024-01",
+         95000.0,
+         120
+        ],
+        [
+         9,
+         "Ivy",
+         "Grocery",
+         "East",
+         "2024-01",
+         61000.0,
+         620
+        ],
+        [
+         8,
+         "Henry",
+         "Grocery",
+         "South",
+         "2024-01",
+         52000.0,
+         580
+        ]
+       ],
+       "datasetInfos": [],
+       "dbfsResultPath": null,
+       "isJsonSchema": true,
+       "metadata": {},
+       "overflow": false,
+       "plotOptions": {
+        "customPlotOptions": {},
+        "displayType": "table",
+        "pivotAggregation": null,
+        "pivotColumns": null,
+        "xColumns": null,
+        "yColumns": null
+       },
+       "removedWidgets": [],
+       "schema": [
+        {
+         "metadata": "{}",
+         "name": "emp_id",
+         "type": "\"integer\""
+        },
+        {
+         "metadata": "{}",
+         "name": "emp_name",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dept",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "region",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "month",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "sales",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "units_sold",
+         "type": "\"integer\""
+        }
+       ],
+       "type": "table"
+      }
+     },
+     "output_type": "display_data"
+    },
+    {
+     "output_type": "display_data",
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>month</th><th>dept</th><th>emp_name</th><th>sales</th></tr></thead><tbody><tr><td>2024-01</td><td>Clothing</td><td>Frank</td><td>102000.0</td></tr><tr><td>2024-01</td><td>Electronics</td><td>Jack</td><td>115000.0</td></tr><tr><td>2024-01</td><td>Grocery</td><td>Ivy</td><td>61000.0</td></tr><tr><td>2024-02</td><td>Clothing</td><td>Frank</td><td>98000.0</td></tr><tr><td>2024-02</td><td>Electronics</td><td>Jack</td><td>121000.0</td></tr><tr><td>2024-02</td><td>Grocery</td><td>Ivy</td><td>59000.0</td></tr><tr><td>2024-03</td><td>Clothing</td><td>Frank</td><td>110000.0</td></tr><tr><td>2024-03</td><td>Electronics</td><td>Jack</td><td>118000.0</td></tr><tr><td>2024-03</td><td>Grocery</td><td>Ivy</td><td>63000.0</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {
+      "application/vnd.databricks.v1+output": {
+       "addedWidgets": {},
+       "aggData": [],
+       "aggError": "",
+       "aggOverflow": false,
+       "aggSchema": [],
+       "aggSeriesLimitReached": false,
+       "aggType": "",
+       "arguments": {},
+       "columnCustomDisplayInfos": {},
+       "data": [
+        [
+         "2024-01",
+         "Clothing",
+         "Frank",
+         102000.0
+        ],
+        [
+         "2024-01",
+         "Electronics",
+         "Jack",
+         115000.0
+        ],
+        [
+         "2024-01",
+         "Grocery",
+         "Ivy",
+         61000.0
+        ],
+        [
+         "2024-02",
+         "Clothing",
+         "Frank",
+         98000.0
+        ],
+        [
+         "2024-02",
+         "Electronics",
+         "Jack",
+         121000.0
+        ],
+        [
+         "2024-02",
+         "Grocery",
+         "Ivy",
+         59000.0
+        ],
+        [
+         "2024-03",
+         "Clothing",
+         "Frank",
+         110000.0
+        ],
+        [
+         "2024-03",
+         "Electronics",
+         "Jack",
+         118000.0
+        ],
+        [
+         "2024-03",
+         "Grocery",
+         "Ivy",
+         63000.0
+        ]
+       ],
+       "datasetInfos": [],
+       "dbfsResultPath": null,
+       "isJsonSchema": true,
+       "metadata": {},
+       "overflow": false,
+       "plotOptions": {
+        "customPlotOptions": {},
+        "displayType": "table",
+        "pivotAggregation": null,
+        "pivotColumns": null,
+        "xColumns": null,
+        "yColumns": null
+       },
+       "removedWidgets": [],
+       "schema": [
+        {
+         "metadata": "{}",
+         "name": "month",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dept",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "emp_name",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "sales",
+         "type": "\"double\""
+        }
+       ],
+       "type": "table"
+      }
+     },
+     "output_type": "display_data"
+    },
+    {
+     "output_type": "display_data",
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>emp_name</th><th>dept</th><th>sales</th></tr></thead><tbody><tr><td>Diana</td><td>Clothing</td><td>65000.0</td></tr><tr><td>Bob</td><td>Electronics</td><td>72000.0</td></tr><tr><td>Grace</td><td>Grocery</td><td>45000.0</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {
+      "application/vnd.databricks.v1+output": {
+       "addedWidgets": {},
+       "aggData": [],
+       "aggError": "",
+       "aggOverflow": false,
+       "aggSchema": [],
+       "aggSeriesLimitReached": false,
+       "aggType": "",
+       "arguments": {},
+       "columnCustomDisplayInfos": {},
+       "data": [
+        [
+         "Diana",
+         "Clothing",
+         65000.0
+        ],
+        [
+         "Bob",
+         "Electronics",
+         72000.0
+        ],
+        [
+         "Grace",
+         "Grocery",
+         45000.0
+        ]
+       ],
+       "datasetInfos": [],
+       "dbfsResultPath": null,
+       "isJsonSchema": true,
+       "metadata": {},
+       "overflow": false,
+       "plotOptions": {
+        "customPlotOptions": {},
+        "displayType": "table",
+        "pivotAggregation": null,
+        "pivotColumns": null,
+        "xColumns": null,
+        "yColumns": null
+       },
+       "removedWidgets": [],
+       "schema": [
+        {
+         "metadata": "{}",
+         "name": "emp_name",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dept",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "sales",
+         "type": "\"double\""
+        }
+       ],
+       "type": "table"
+      }
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "from pyspark.sql import *\n",
+    "from pyspark.sql.functions import *\n",
+    "from pyspark.sql.types import *\n",
+    "\n",
+    "# top 2 sales people per department for jan 2024\n",
+    "w = Window.partitionBy(\"dept\").orderBy(col(\"sales\").desc())\n",
+    "\n",
+    "top_2 = df.filter(col(\"month\").contains(\"2024-01\")) \\\n",
+    "          .withColumn(\"row_number\",row_number().over(w)) \\\n",
+    "          .filter(col(\"row_number\") <= 2) \\\n",
+    "          .drop(\"row_number\").orderBy(\"dept\",col(\"sales\").desc())\n",
+    "\n",
+    "top_2.display()\n",
+    "\n",
+    "# top 1 per dept per month (best performer each month)\n",
+    "w = Window.partitionBy(\"dept\",\"month\").orderBy(col(\"sales\").desc())\n",
+    "\n",
+    "best_per_month = df.withColumn(\"row_number\",row_number().over(w)) \\\n",
+    "                   .filter(col(\"row_number\") == 1) \\\n",
+    "                   .select(\"month\",\"dept\",\"emp_name\", \"sales\") \\\n",
+    "                   .orderBy(\"month\",\"dept\")\n",
+    "\n",
+    "best_per_month.display()\n",
+    "\n",
+    "# bottom 1 per dept - just flip the sort order\n",
+    "w3 = Window.partitionBy(\"dept\").orderBy(col(\"sales\").asc())\n",
+    "\n",
+    "bottom_per_dept = df.filter(col(\"month\").contains(\"2024-01\")) \\\n",
+    "                    .withColumn(\"row_number\",row_number().over(w3)) \\\n",
+    "                    .filter(col(\"row_number\")==1) \\\n",
+    "                    .select(\"emp_name\",\"dept\",\"sales\") \\\n",
+    "                    .orderBy(\"dept\")\n",
+    "\n",
+    "bottom_per_dept.display()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {},
+     "inputWidgets": {},
+     "nuid": "87459500-d14a-4752-ae01-80d7e9b65a9e",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "source": [
+    "####Ex 3→ Running total and running average with SUM/AVG OVER\n",
+    "Running totals and moving averages are used in finance, sales dashboards, and time-series pipelines constantly. The ROWS BETWEEN clause controls the window frame."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 0,
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "collapsed": true,
+     "inputWidgets": {},
+     "nuid": "58348b8d-006c-46a9-9aa4-b1a0778ccff3",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "outputs": [
+    {
+     "output_type": "display_data",
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>emp_name</th><th>dept</th><th>month</th><th>sales</th><th>running_sales_total</th><th>running_avg_sales</th><th>dept_2m_moving_avg</th></tr></thead><tbody><tr><td>Alice</td><td>Electronics</td><td>2024-01</td><td>95000.0</td><td>95000.0</td><td>95000.0</td><td>95000.0</td></tr><tr><td>Alice</td><td>Electronics</td><td>2024-02</td><td>102000.0</td><td>197000.0</td><td>108500.0</td><td>108500.0</td></tr><tr><td>Alice</td><td>Electronics</td><td>2024-03</td><td>98000.0</td><td>295000.0</td><td>109500.0</td><td>109500.0</td></tr><tr><td>Jack</td><td>Electronics</td><td>2024-01</td><td>115000.0</td><td>115000.0</td><td>101500.0</td><td>101500.0</td></tr><tr><td>Jack</td><td>Electronics</td><td>2024-02</td><td>121000.0</td><td>236000.0</td><td>106000.0</td><td>106000.0</td></tr><tr><td>Jack</td><td>Electronics</td><td>2024-03</td><td>118000.0</td><td>354000.0</td><td>101500.0</td><td>101500.0</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {
+      "application/vnd.databricks.v1+output": {
+       "addedWidgets": {},
+       "aggData": [],
+       "aggError": "",
+       "aggOverflow": false,
+       "aggSchema": [],
+       "aggSeriesLimitReached": false,
+       "aggType": "",
+       "arguments": {},
+       "columnCustomDisplayInfos": {},
+       "data": [
+        [
+         "Alice",
+         "Electronics",
+         "2024-01",
+         95000.0,
+         95000.0,
+         95000.0,
+         95000.0
+        ],
+        [
+         "Alice",
+         "Electronics",
+         "2024-02",
+         102000.0,
+         197000.0,
+         108500.0,
+         108500.0
+        ],
+        [
+         "Alice",
+         "Electronics",
+         "2024-03",
+         98000.0,
+         295000.0,
+         109500.0,
+         109500.0
+        ],
+        [
+         "Jack",
+         "Electronics",
+         "2024-01",
+         115000.0,
+         115000.0,
+         101500.0,
+         101500.0
+        ],
+        [
+         "Jack",
+         "Electronics",
+         "2024-02",
+         121000.0,
+         236000.0,
+         106000.0,
+         106000.0
+        ],
+        [
+         "Jack",
+         "Electronics",
+         "2024-03",
+         118000.0,
+         354000.0,
+         101500.0,
+         101500.0
+        ]
+       ],
+       "datasetInfos": [],
+       "dbfsResultPath": null,
+       "isJsonSchema": true,
+       "metadata": {},
+       "overflow": false,
+       "plotOptions": {
+        "customPlotOptions": {},
+        "displayType": "table",
+        "pivotAggregation": null,
+        "pivotColumns": null,
+        "xColumns": null,
+        "yColumns": null
+       },
+       "removedWidgets": [],
+       "schema": [
+        {
+         "metadata": "{}",
+         "name": "emp_name",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dept",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "month",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "sales",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "running_sales_total",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "running_avg_sales",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dept_2m_moving_avg",
+         "type": "\"double\""
+        }
+       ],
+       "type": "table"
+      }
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "from pyspark.sql import *\n",
+    "from pyspark.sql.functions import *\n",
+    "from pyspark.sql.types import *\n",
+    "\n",
+    "# Running total of sales per employee across months\n",
+    "w_running = Window.partitionBy(\"emp_id\").orderBy(\"month\").rowsBetween(Window.unboundedPreceding, Window.currentRow)\n",
+    "\n",
+    "# Running average\n",
+    "w_ravg = Window.partitionBy(\"dept\").orderBy(\"month\").rowsBetween(-1, Window.currentRow)\n",
+    "# 2nd month moving average\n",
+    "\n",
+    "df.withColumn(\"running_sales_total\",round(sum(\"sales\").over(w_running),2)) \\\n",
+    "  .withColumn(\"running_avg_sales\",round(avg(\"sales\").over(w_ravg),2)) \\\n",
+    "  .withColumn(\"dept_2m_moving_avg\",round(avg(\"sales\").over(w_ravg),2)) \\\n",
+    "  .select(\"emp_name\",\"dept\",\"month\",\"sales\",\"running_sales_total\",\"running_avg_sales\",\"dept_2m_moving_avg\") \\\n",
+    "  .filter(col(\"emp_name\").isin(\"Alice\",\"Jack\")).orderBy(\"emp_name\",\"month\").display()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {},
+     "inputWidgets": {},
+     "nuid": "f2473d98-c2e0-4cd3-99f0-f35188aa3ba9",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "source": [
+    "####Ex 4→ MIN and MAX over a window - compare to partition extremes\n",
+    "MIN and MAX over a window let you compare each row's value to the best and worst in its group — without any self-join or subquery. Common in performance dashboards."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 0,
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "collapsed": true,
+     "inputWidgets": {},
+     "nuid": "c0fa7455-6cf5-457f-817a-2bb0196f7eba",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "outputs": [
+    {
+     "output_type": "display_data",
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>month</th><th>emp_name</th><th>dept</th><th>sales</th><th>dept_best_sales</th><th>gap_from_best</th><th>dept_worst_sales</th><th>gap_from_worst</th><th>pct_of_best</th></tr></thead><tbody><tr><td>2024-01</td><td>Frank</td><td>Clothing</td><td>102000.0</td><td>102000.0</td><td>0.0</td><td>65000.0</td><td>37000.0</td><td>100.0</td></tr><tr><td>2024-01</td><td>Eve</td><td>Clothing</td><td>78000.0</td><td>102000.0</td><td>24000.0</td><td>65000.0</td><td>13000.0</td><td>76.5</td></tr><tr><td>2024-01</td><td>Diana</td><td>Clothing</td><td>65000.0</td><td>102000.0</td><td>37000.0</td><td>65000.0</td><td>0.0</td><td>63.7</td></tr><tr><td>2024-01</td><td>Jack</td><td>Electronics</td><td>115000.0</td><td>115000.0</td><td>0.0</td><td>72000.0</td><td>43000.0</td><td>100.0</td></tr><tr><td>2024-01</td><td>Alice</td><td>Electronics</td><td>95000.0</td><td>115000.0</td><td>20000.0</td><td>72000.0</td><td>23000.0</td><td>82.6</td></tr><tr><td>2024-01</td><td>Charlie</td><td>Electronics</td><td>88000.0</td><td>115000.0</td><td>27000.0</td><td>72000.0</td><td>16000.0</td><td>76.5</td></tr><tr><td>2024-01</td><td>Bob</td><td>Electronics</td><td>72000.0</td><td>115000.0</td><td>43000.0</td><td>72000.0</td><td>0.0</td><td>62.6</td></tr><tr><td>2024-01</td><td>Ivy</td><td>Grocery</td><td>61000.0</td><td>61000.0</td><td>0.0</td><td>45000.0</td><td>16000.0</td><td>100.0</td></tr><tr><td>2024-01</td><td>Henry</td><td>Grocery</td><td>52000.0</td><td>61000.0</td><td>9000.0</td><td>45000.0</td><td>7000.0</td><td>85.2</td></tr><tr><td>2024-01</td><td>Grace</td><td>Grocery</td><td>45000.0</td><td>61000.0</td><td>16000.0</td><td>45000.0</td><td>0.0</td><td>73.8</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {
+      "application/vnd.databricks.v1+output": {
+       "addedWidgets": {},
+       "aggData": [],
+       "aggError": "",
+       "aggOverflow": false,
+       "aggSchema": [],
+       "aggSeriesLimitReached": false,
+       "aggType": "",
+       "arguments": {},
+       "columnCustomDisplayInfos": {},
+       "data": [
+        [
+         "2024-01",
+         "Frank",
+         "Clothing",
+         102000.0,
+         102000.0,
+         0.0,
+         65000.0,
+         37000.0,
+         100.0
+        ],
+        [
+         "2024-01",
+         "Eve",
+         "Clothing",
+         78000.0,
+         102000.0,
+         24000.0,
+         65000.0,
+         13000.0,
+         76.5
+        ],
+        [
+         "2024-01",
+         "Diana",
+         "Clothing",
+         65000.0,
+         102000.0,
+         37000.0,
+         65000.0,
+         0.0,
+         63.7
+        ],
+        [
+         "2024-01",
+         "Jack",
+         "Electronics",
+         115000.0,
+         115000.0,
+         0.0,
+         72000.0,
+         43000.0,
+         100.0
+        ],
+        [
+         "2024-01",
+         "Alice",
+         "Electronics",
+         95000.0,
+         115000.0,
+         20000.0,
+         72000.0,
+         23000.0,
+         82.6
+        ],
+        [
+         "2024-01",
+         "Charlie",
+         "Electronics",
+         88000.0,
+         115000.0,
+         27000.0,
+         72000.0,
+         16000.0,
+         76.5
+        ],
+        [
+         "2024-01",
+         "Bob",
+         "Electronics",
+         72000.0,
+         115000.0,
+         43000.0,
+         72000.0,
+         0.0,
+         62.6
+        ],
+        [
+         "2024-01",
+         "Ivy",
+         "Grocery",
+         61000.0,
+         61000.0,
+         0.0,
+         45000.0,
+         16000.0,
+         100.0
+        ],
+        [
+         "2024-01",
+         "Henry",
+         "Grocery",
+         52000.0,
+         61000.0,
+         9000.0,
+         45000.0,
+         7000.0,
+         85.2
+        ],
+        [
+         "2024-01",
+         "Grace",
+         "Grocery",
+         45000.0,
+         61000.0,
+         16000.0,
+         45000.0,
+         0.0,
+         73.8
+        ]
+       ],
+       "datasetInfos": [],
+       "dbfsResultPath": null,
+       "isJsonSchema": true,
+       "metadata": {},
+       "overflow": false,
+       "plotOptions": {
+        "customPlotOptions": {},
+        "displayType": "table",
+        "pivotAggregation": null,
+        "pivotColumns": null,
+        "xColumns": null,
+        "yColumns": null
+       },
+       "removedWidgets": [],
+       "schema": [
+        {
+         "metadata": "{}",
+         "name": "month",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "emp_name",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dept",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "sales",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dept_best_sales",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "gap_from_best",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dept_worst_sales",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "gap_from_worst",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "pct_of_best",
+         "type": "\"double\""
+        }
+       ],
+       "type": "table"
+      }
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "from pyspark.sql import *\n",
+    "from pyspark.sql.types import *\n",
+    "from pyspark.sql.functions import *\n",
+    "\n",
+    "w = Window.partitionBy(\"dept\",\"month\")\n",
+    "\n",
+    "df.withColumn(\"dept_best_sales\", round(max(\"sales\").over(w),2)) \\\n",
+    "       .withColumn(\"dept_worst_sales\", round(min(\"sales\").over(w),2)) \\\n",
+    "       .withColumn(\"gap_from_best\", round(max(\"sales\").over(w) - col(\"sales\"),2)) \\\n",
+    "       .withColumn(\"gap_from_worst\", col(\"sales\") - round(min(\"sales\").over(w),2)) \\\n",
+    "       .withColumn(\"pct_of_best\", round(col(\"sales\") / max(\"sales\").over(w) * 100, 1)) \\\n",
+    "       .select(\n",
+    "           \"month\",\n",
+    "           \"emp_name\",\n",
+    "           \"dept\",\n",
+    "           \"sales\",\n",
+    "           \"dept_best_sales\",\n",
+    "           \"gap_from_best\",\n",
+    "           \"dept_worst_sales\",\n",
+    "           \"gap_from_worst\",\n",
+    "           \"pct_of_best\") \\\n",
+    "       .filter(col(\"month\").contains(\"2024-01\")) \\\n",
+    "       .orderBy(\"dept\",col(\"sales\").desc()).display()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {},
+     "inputWidgets": {},
+     "nuid": "64d169de-19a6-4bf6-997e-ecd289c46f15",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "source": [
+    "####Ex 5→ LAG and LEAD - month-over-month change\n",
+    "LAG gets the value from a previous row, LEAD gets the value from a future row — within a defined window. The classic use case is month-over-month or year-over-year comparisons."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 0,
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "collapsed": true,
+     "inputWidgets": {},
+     "nuid": "fd31b2bf-b97a-4a01-b7af-9458788cd0ef",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "outputs": [
+    {
+     "output_type": "display_data",
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>emp_name</th><th>dept</th><th>month</th><th>sales</th><th>prev_month_sales</th><th>mom_change</th><th>mom_growth_pct</th><th>mom_trend</th></tr></thead><tbody><tr><td>Alice</td><td>Electronics</td><td>2024-01</td><td>95000.0</td><td>null</td><td>null</td><td>null</td><td>Flat</td></tr><tr><td>Alice</td><td>Electronics</td><td>2024-02</td><td>102000.0</td><td>95000.0</td><td>7000.0</td><td>7.4</td><td>Up</td></tr><tr><td>Alice</td><td>Electronics</td><td>2024-03</td><td>98000.0</td><td>102000.0</td><td>-4000.0</td><td>-3.9</td><td>Down</td></tr><tr><td>Bob</td><td>Electronics</td><td>2024-01</td><td>72000.0</td><td>null</td><td>null</td><td>null</td><td>Flat</td></tr><tr><td>Bob</td><td>Electronics</td><td>2024-02</td><td>68000.0</td><td>72000.0</td><td>-4000.0</td><td>-5.6</td><td>Down</td></tr><tr><td>Bob</td><td>Electronics</td><td>2024-03</td><td>75000.0</td><td>68000.0</td><td>7000.0</td><td>10.3</td><td>Up</td></tr><tr><td>Charlie</td><td>Electronics</td><td>2024-01</td><td>88000.0</td><td>null</td><td>null</td><td>null</td><td>Flat</td></tr><tr><td>Charlie</td><td>Electronics</td><td>2024-02</td><td>91000.0</td><td>88000.0</td><td>3000.0</td><td>3.4</td><td>Up</td></tr><tr><td>Charlie</td><td>Electronics</td><td>2024-03</td><td>85000.0</td><td>91000.0</td><td>-6000.0</td><td>-6.6</td><td>Down</td></tr><tr><td>Diana</td><td>Clothing</td><td>2024-01</td><td>65000.0</td><td>null</td><td>null</td><td>null</td><td>Flat</td></tr><tr><td>Diana</td><td>Clothing</td><td>2024-02</td><td>70000.0</td><td>65000.0</td><td>5000.0</td><td>7.7</td><td>Up</td></tr><tr><td>Diana</td><td>Clothing</td><td>2024-03</td><td>73000.0</td><td>70000.0</td><td>3000.0</td><td>4.3</td><td>Up</td></tr><tr><td>Eve</td><td>Clothing</td><td>2024-01</td><td>78000.0</td><td>null</td><td>null</td><td>null</td><td>Flat</td></tr><tr><td>Eve</td><td>Clothing</td><td>2024-02</td><td>83000.0</td><td>78000.0</td><td>5000.0</td><td>6.4</td><td>Up</td></tr><tr><td>Eve</td><td>Clothing</td><td>2024-03</td><td>80000.0</td><td>83000.0</td><td>-3000.0</td><td>-3.6</td><td>Down</td></tr><tr><td>Frank</td><td>Clothing</td><td>2024-01</td><td>102000.0</td><td>null</td><td>null</td><td>null</td><td>Flat</td></tr><tr><td>Frank</td><td>Clothing</td><td>2024-02</td><td>98000.0</td><td>102000.0</td><td>-4000.0</td><td>-3.9</td><td>Down</td></tr><tr><td>Frank</td><td>Clothing</td><td>2024-03</td><td>110000.0</td><td>98000.0</td><td>12000.0</td><td>12.2</td><td>Up</td></tr><tr><td>Grace</td><td>Grocery</td><td>2024-01</td><td>45000.0</td><td>null</td><td>null</td><td>null</td><td>Flat</td></tr><tr><td>Grace</td><td>Grocery</td><td>2024-02</td><td>48000.0</td><td>45000.0</td><td>3000.0</td><td>6.7</td><td>Up</td></tr><tr><td>Grace</td><td>Grocery</td><td>2024-03</td><td>51000.0</td><td>48000.0</td><td>3000.0</td><td>6.3</td><td>Up</td></tr><tr><td>Henry</td><td>Grocery</td><td>2024-01</td><td>52000.0</td><td>null</td><td>null</td><td>null</td><td>Flat</td></tr><tr><td>Henry</td><td>Grocery</td><td>2024-02</td><td>55000.0</td><td>52000.0</td><td>3000.0</td><td>5.8</td><td>Up</td></tr><tr><td>Henry</td><td>Grocery</td><td>2024-03</td><td>57000.0</td><td>55000.0</td><td>2000.0</td><td>3.6</td><td>Up</td></tr><tr><td>Ivy</td><td>Grocery</td><td>2024-01</td><td>61000.0</td><td>null</td><td>null</td><td>null</td><td>Flat</td></tr><tr><td>Ivy</td><td>Grocery</td><td>2024-02</td><td>59000.0</td><td>61000.0</td><td>-2000.0</td><td>-3.3</td><td>Down</td></tr><tr><td>Ivy</td><td>Grocery</td><td>2024-03</td><td>63000.0</td><td>59000.0</td><td>4000.0</td><td>6.8</td><td>Up</td></tr><tr><td>Jack</td><td>Electronics</td><td>2024-01</td><td>115000.0</td><td>null</td><td>null</td><td>null</td><td>Flat</td></tr><tr><td>Jack</td><td>Electronics</td><td>2024-02</td><td>121000.0</td><td>115000.0</td><td>6000.0</td><td>5.2</td><td>Up</td></tr><tr><td>Jack</td><td>Electronics</td><td>2024-03</td><td>118000.0</td><td>121000.0</td><td>-3000.0</td><td>-2.5</td><td>Down</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {
+      "application/vnd.databricks.v1+output": {
+       "addedWidgets": {},
+       "aggData": [],
+       "aggError": "",
+       "aggOverflow": false,
+       "aggSchema": [],
+       "aggSeriesLimitReached": false,
+       "aggType": "",
+       "arguments": {},
+       "columnCustomDisplayInfos": {},
+       "data": [
+        [
+         "Alice",
+         "Electronics",
+         "2024-01",
+         95000.0,
+         null,
+         null,
+         null,
+         "Flat"
+        ],
+        [
+         "Alice",
+         "Electronics",
+         "2024-02",
+         102000.0,
+         95000.0,
+         7000.0,
+         7.4,
+         "Up"
+        ],
+        [
+         "Alice",
+         "Electronics",
+         "2024-03",
+         98000.0,
+         102000.0,
+         -4000.0,
+         -3.9,
+         "Down"
+        ],
+        [
+         "Bob",
+         "Electronics",
+         "2024-01",
+         72000.0,
+         null,
+         null,
+         null,
+         "Flat"
+        ],
+        [
+         "Bob",
+         "Electronics",
+         "2024-02",
+         68000.0,
+         72000.0,
+         -4000.0,
+         -5.6,
+         "Down"
+        ],
+        [
+         "Bob",
+         "Electronics",
+         "2024-03",
+         75000.0,
+         68000.0,
+         7000.0,
+         10.3,
+         "Up"
+        ],
+        [
+         "Charlie",
+         "Electronics",
+         "2024-01",
+         88000.0,
+         null,
+         null,
+         null,
+         "Flat"
+        ],
+        [
+         "Charlie",
+         "Electronics",
+         "2024-02",
+         91000.0,
+         88000.0,
+         3000.0,
+         3.4,
+         "Up"
+        ],
+        [
+         "Charlie",
+         "Electronics",
+         "2024-03",
+         85000.0,
+         91000.0,
+         -6000.0,
+         -6.6,
+         "Down"
+        ],
+        [
+         "Diana",
+         "Clothing",
+         "2024-01",
+         65000.0,
+         null,
+         null,
+         null,
+         "Flat"
+        ],
+        [
+         "Diana",
+         "Clothing",
+         "2024-02",
+         70000.0,
+         65000.0,
+         5000.0,
+         7.7,
+         "Up"
+        ],
+        [
+         "Diana",
+         "Clothing",
+         "2024-03",
+         73000.0,
+         70000.0,
+         3000.0,
+         4.3,
+         "Up"
+        ],
+        [
+         "Eve",
+         "Clothing",
+         "2024-01",
+         78000.0,
+         null,
+         null,
+         null,
+         "Flat"
+        ],
+        [
+         "Eve",
+         "Clothing",
+         "2024-02",
+         83000.0,
+         78000.0,
+         5000.0,
+         6.4,
+         "Up"
+        ],
+        [
+         "Eve",
+         "Clothing",
+         "2024-03",
+         80000.0,
+         83000.0,
+         -3000.0,
+         -3.6,
+         "Down"
+        ],
+        [
+         "Frank",
+         "Clothing",
+         "2024-01",
+         102000.0,
+         null,
+         null,
+         null,
+         "Flat"
+        ],
+        [
+         "Frank",
+         "Clothing",
+         "2024-02",
+         98000.0,
+         102000.0,
+         -4000.0,
+         -3.9,
+         "Down"
+        ],
+        [
+         "Frank",
+         "Clothing",
+         "2024-03",
+         110000.0,
+         98000.0,
+         12000.0,
+         12.2,
+         "Up"
+        ],
+        [
+         "Grace",
+         "Grocery",
+         "2024-01",
+         45000.0,
+         null,
+         null,
+         null,
+         "Flat"
+        ],
+        [
+         "Grace",
+         "Grocery",
+         "2024-02",
+         48000.0,
+         45000.0,
+         3000.0,
+         6.7,
+         "Up"
+        ],
+        [
+         "Grace",
+         "Grocery",
+         "2024-03",
+         51000.0,
+         48000.0,
+         3000.0,
+         6.3,
+         "Up"
+        ],
+        [
+         "Henry",
+         "Grocery",
+         "2024-01",
+         52000.0,
+         null,
+         null,
+         null,
+         "Flat"
+        ],
+        [
+         "Henry",
+         "Grocery",
+         "2024-02",
+         55000.0,
+         52000.0,
+         3000.0,
+         5.8,
+         "Up"
+        ],
+        [
+         "Henry",
+         "Grocery",
+         "2024-03",
+         57000.0,
+         55000.0,
+         2000.0,
+         3.6,
+         "Up"
+        ],
+        [
+         "Ivy",
+         "Grocery",
+         "2024-01",
+         61000.0,
+         null,
+         null,
+         null,
+         "Flat"
+        ],
+        [
+         "Ivy",
+         "Grocery",
+         "2024-02",
+         59000.0,
+         61000.0,
+         -2000.0,
+         -3.3,
+         "Down"
+        ],
+        [
+         "Ivy",
+         "Grocery",
+         "2024-03",
+         63000.0,
+         59000.0,
+         4000.0,
+         6.8,
+         "Up"
+        ],
+        [
+         "Jack",
+         "Electronics",
+         "2024-01",
+         115000.0,
+         null,
+         null,
+         null,
+         "Flat"
+        ],
+        [
+         "Jack",
+         "Electronics",
+         "2024-02",
+         121000.0,
+         115000.0,
+         6000.0,
+         5.2,
+         "Up"
+        ],
+        [
+         "Jack",
+         "Electronics",
+         "2024-03",
+         118000.0,
+         121000.0,
+         -3000.0,
+         -2.5,
+         "Down"
+        ]
+       ],
+       "datasetInfos": [],
+       "dbfsResultPath": null,
+       "isJsonSchema": true,
+       "metadata": {},
+       "overflow": false,
+       "plotOptions": {
+        "customPlotOptions": {},
+        "displayType": "table",
+        "pivotAggregation": null,
+        "pivotColumns": null,
+        "xColumns": null,
+        "yColumns": null
+       },
+       "removedWidgets": [],
+       "schema": [
+        {
+         "metadata": "{}",
+         "name": "emp_name",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dept",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "month",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "sales",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "prev_month_sales",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "mom_change",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "mom_growth_pct",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "mom_trend",
+         "type": "\"string\""
+        }
+       ],
+       "type": "table"
+      }
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "from pyspark.sql import *\n",
+    "from pyspark.sql.functions import *\n",
+    "from pyspark.sql.types import *\n",
+    "\n",
+    "# Window per employee ordered by month\n",
+    "w = Window.partitionBy(\"emp_id\", \"emp_name\").orderBy(\"month\")\n",
+    "\n",
+    "df.withColumn(\"prev_month_sales\", round(lag(\"sales\", 1).over(w), 2)) \\\n",
+    "        .withColumn(\"next_month_sales\", round(lead(\"sales\", 1).over(w), 2)) \\\n",
+    "        .withColumn(\"mom_change\", round(col(\"sales\") - lag(\"sales\", 1).over(w), 2)) \\\n",
+    "        .withColumn(\"mom_growth_pct\", round((col(\"sales\") - lag(\"sales\", 1).over(w)) / lag(\"sales\", 1).over(w) * 100, 1)) \\\n",
+    "        .withColumn(\"mom_trend\", when(col(\"sales\") > lag(\"sales\", 1).over(w), \"Up\") \\\n",
+    "        .when(col(\"sales\") < lag(\"sales\", 1).over(w), \"Down\") \\\n",
+    "        .otherwise(\"Flat\")) \\\n",
+    "        .select(\n",
+    "            \"emp_name\",\n",
+    "            \"dept\",\n",
+    "            \"month\",\n",
+    "            \"sales\",\n",
+    "            \"prev_month_sales\",\n",
+    "            \"mom_change\",\n",
+    "            \"mom_growth_pct\",\n",
+    "            \"mom_trend\") \\\n",
+    "        .orderBy(\"emp_name\", \"month\").display()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {},
+     "inputWidgets": {},
+     "nuid": "4a3ba7cd-1039-4526-8575-3de04d26cb1e",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "source": [
+    "####Ex 6→ Deduplicate with ROW_NUMBER - keep latest record per key\n",
+    "The most practical window function pattern in real DE work. When you get duplicate records for the same key, use ROW_NUMBER to pick exactly one — the most recent, highest value, or any other tie-breaking rule."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 0,
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "collapsed": true,
+     "inputWidgets": {},
+     "nuid": "bfb148bc-85ba-4c51-aa0e-b6d9535595b0",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "outputs": [
+    {
+     "output_type": "display_data",
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>emp_id</th><th>emp_name</th><th>dept</th><th>region</th><th>month</th><th>sales</th><th>units_sold</th><th>updated_at</th></tr></thead><tbody><tr><td>1</td><td>Alice</td><td>Electronics</td><td>North</td><td>2024-01</td><td>95000.0</td><td>120</td><td>2024-01-31 10:00:00</td></tr><tr><td>1</td><td>Alice</td><td>Electronics</td><td>North</td><td>2024-01</td><td>97000.0</td><td>122</td><td>2024-01-31 14:00:00</td></tr><tr><td>2</td><td>Bob</td><td>Electronics</td><td>North</td><td>2024-01</td><td>72000.0</td><td>95</td><td>2024-01-31 09:00:00</td></tr><tr><td>2</td><td>Bob</td><td>Electronics</td><td>North</td><td>2024-01</td><td>72000.0</td><td>95</td><td>2024-01-31 09:00:00</td></tr><tr><td>3</td><td>Charlie</td><td>Electronics</td><td>South</td><td>2024-01</td><td>88000.0</td><td>110</td><td>2024-01-31 11:00:00</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {
+      "application/vnd.databricks.v1+output": {
+       "addedWidgets": {},
+       "aggData": [],
+       "aggError": "",
+       "aggOverflow": false,
+       "aggSchema": [],
+       "aggSeriesLimitReached": false,
+       "aggType": "",
+       "arguments": {},
+       "columnCustomDisplayInfos": {},
+       "data": [
+        [
+         1,
+         "Alice",
+         "Electronics",
+         "North",
+         "2024-01",
+         95000.0,
+         120,
+         "2024-01-31 10:00:00"
+        ],
+        [
+         1,
+         "Alice",
+         "Electronics",
+         "North",
+         "2024-01",
+         97000.0,
+         122,
+         "2024-01-31 14:00:00"
+        ],
+        [
+         2,
+         "Bob",
+         "Electronics",
+         "North",
+         "2024-01",
+         72000.0,
+         95,
+         "2024-01-31 09:00:00"
+        ],
+        [
+         2,
+         "Bob",
+         "Electronics",
+         "North",
+         "2024-01",
+         72000.0,
+         95,
+         "2024-01-31 09:00:00"
+        ],
+        [
+         3,
+         "Charlie",
+         "Electronics",
+         "South",
+         "2024-01",
+         88000.0,
+         110,
+         "2024-01-31 11:00:00"
+        ]
+       ],
+       "datasetInfos": [],
+       "dbfsResultPath": null,
+       "isJsonSchema": true,
+       "metadata": {},
+       "overflow": false,
+       "plotOptions": {
+        "customPlotOptions": {},
+        "displayType": "table",
+        "pivotAggregation": null,
+        "pivotColumns": null,
+        "xColumns": null,
+        "yColumns": null
+       },
+       "removedWidgets": [],
+       "schema": [
+        {
+         "metadata": "{}",
+         "name": "emp_id",
+         "type": "\"integer\""
+        },
+        {
+         "metadata": "{}",
+         "name": "emp_name",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dept",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "region",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "month",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "sales",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "units_sold",
+         "type": "\"integer\""
+        },
+        {
+         "metadata": "{}",
+         "name": "updated_at",
+         "type": "\"string\""
+        }
+       ],
+       "type": "table"
+      }
+     },
+     "output_type": "display_data"
+    },
+    {
+     "output_type": "stream",
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "After dedup done...\n"
+     ]
+    },
+    {
+     "output_type": "display_data",
+     "data": {
+      "text/html": [
+       "<style scoped>\n",
+       "  .table-result-container {\n",
+       "    max-height: 300px;\n",
+       "    overflow: auto;\n",
+       "  }\n",
+       "  table, th, td {\n",
+       "    border: 1px solid black;\n",
+       "    border-collapse: collapse;\n",
+       "  }\n",
+       "  th, td {\n",
+       "    padding: 5px;\n",
+       "  }\n",
+       "  th {\n",
+       "    text-align: left;\n",
+       "  }\n",
+       "</style><div class='table-result-container'><table class='table-result'><thead style='background-color: white'><tr><th>emp_id</th><th>emp_name</th><th>dept</th><th>region</th><th>month</th><th>sales</th><th>units_sold</th><th>updated_at</th></tr></thead><tbody><tr><td>1</td><td>Alice</td><td>Electronics</td><td>North</td><td>2024-01</td><td>97000.0</td><td>122</td><td>2024-01-31 14:00:00</td></tr><tr><td>2</td><td>Bob</td><td>Electronics</td><td>North</td><td>2024-01</td><td>72000.0</td><td>95</td><td>2024-01-31 09:00:00</td></tr><tr><td>3</td><td>Charlie</td><td>Electronics</td><td>South</td><td>2024-01</td><td>88000.0</td><td>110</td><td>2024-01-31 11:00:00</td></tr></tbody></table></div>"
+      ]
+     },
+     "metadata": {
+      "application/vnd.databricks.v1+output": {
+       "addedWidgets": {},
+       "aggData": [],
+       "aggError": "",
+       "aggOverflow": false,
+       "aggSchema": [],
+       "aggSeriesLimitReached": false,
+       "aggType": "",
+       "arguments": {},
+       "columnCustomDisplayInfos": {},
+       "data": [
+        [
+         1,
+         "Alice",
+         "Electronics",
+         "North",
+         "2024-01",
+         97000.0,
+         122,
+         "2024-01-31 14:00:00"
+        ],
+        [
+         2,
+         "Bob",
+         "Electronics",
+         "North",
+         "2024-01",
+         72000.0,
+         95,
+         "2024-01-31 09:00:00"
+        ],
+        [
+         3,
+         "Charlie",
+         "Electronics",
+         "South",
+         "2024-01",
+         88000.0,
+         110,
+         "2024-01-31 11:00:00"
+        ]
+       ],
+       "datasetInfos": [],
+       "dbfsResultPath": null,
+       "isJsonSchema": true,
+       "metadata": {},
+       "overflow": false,
+       "plotOptions": {
+        "customPlotOptions": {},
+        "displayType": "table",
+        "pivotAggregation": null,
+        "pivotColumns": null,
+        "xColumns": null,
+        "yColumns": null
+       },
+       "removedWidgets": [],
+       "schema": [
+        {
+         "metadata": "{}",
+         "name": "emp_id",
+         "type": "\"integer\""
+        },
+        {
+         "metadata": "{}",
+         "name": "emp_name",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "dept",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "region",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "month",
+         "type": "\"string\""
+        },
+        {
+         "metadata": "{}",
+         "name": "sales",
+         "type": "\"double\""
+        },
+        {
+         "metadata": "{}",
+         "name": "units_sold",
+         "type": "\"integer\""
+        },
+        {
+         "metadata": "{}",
+         "name": "updated_at",
+         "type": "\"string\""
+        }
+       ],
+       "type": "table"
+      }
+     },
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "from pyspark.sql import *\n",
+    "from pyspark.sql.functions import *\n",
+    "from pyspark.sql.types import *\n",
+    "from datetime import *\n",
+    "\n",
+    "# Simulate duplicate records — same emp+month arriving twice (common in kafka/API ingestion)\n",
+    "dup_data = [\n",
+    "    (1, \"Alice\", \"Electronics\", \"North\", \"2024-01\", 95000.0, 120, \"2024-01-31 10:00:00\"),\n",
+    "    (1, \"Alice\", \"Electronics\", \"North\", \"2024-01\", 97000.0, 122, \"2024-01-31 14:00:00\"), # duplicate,later update\n",
+    "    (2, \"Bob\",   \"Electronics\", \"North\", \"2024-01\", 72000.0,  95, \"2024-01-31 09:00:00\"),\n",
+    "    (2, \"Bob\",   \"Electronics\", \"North\", \"2024-01\", 72000.0,  95, \"2024-01-31 09:00:00\"), # exact duplicate\n",
+    "    (3, \"Charlie\",\"Electronics\",\"South\", \"2024-01\", 88000.0, 110, \"2024-01-31 11:00:00\"),\n",
+    "]\n",
+    "dup_schema = StructType([\n",
+    "    StructField(\"emp_id\",     IntegerType(), True),\n",
+    "    StructField(\"emp_name\",   StringType(),  True),\n",
+    "    StructField(\"dept\",       StringType(),  True),\n",
+    "    StructField(\"region\",     StringType(),  True),\n",
+    "    StructField(\"month\",      StringType(),  True),\n",
+    "    StructField(\"sales\",      DoubleType(),  True),\n",
+    "    StructField(\"units_sold\", IntegerType(), True),\n",
+    "    StructField(\"updated_at\", StringType(),  True),\n",
+    "])\n",
+    "\n",
+    "df_dup = spark.createDataFrame(dup_data,dup_schema)\n",
+    "df_dup.display()\n",
+    "\n",
+    "# Deduplicate: keep latest record per emp_id + month\n",
+    "w_dedup = Window.partitionBy(\"emp_id\",\"month\").orderBy(col(\"updated_at\").desc())\n",
+    "\n",
+    "df_deduped = df_dup.withColumn(\"row_number\",row_number().over(w_dedup)) \\\n",
+    "                   .filter(col(\"row_number\") == 1) \\\n",
+    "                   .drop(\"row_number\")\n",
+    "\n",
+    "print(\"After dedup done...\")\n",
+    "df_deduped.display()"
+   ]
+  }
+ ],
+ "metadata": {
+  "application/vnd.databricks.v1+notebook": {
+   "computePreferences": null,
+   "dashboards": [],
+   "environmentMetadata": {
+    "base_environment": "",
+    "environment_version": "5"
+   },
+   "inputWidgetPreferences": null,
+   "language": "python",
+   "notebookMetadata": {
+    "pythonIndentUnit": 4
+   },
+   "notebookName": "Module_4→Window Functions",
+   "widgets": {}
+  },
+  "language_info": {
+   "name": "python"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 0
+}
